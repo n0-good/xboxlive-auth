@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import config, { defaultXSTSRelyingParty } from './config';
 import { getBaseHeaders } from '../../utils';
 import XRError from '../../classes/XRError';
@@ -9,7 +10,8 @@ import {
 	XBLExchangeRpsTicketResponse,
 	XBLExchangeTokensOptions,
 	XBLExchangeTokensResponse,
-	XBLTokens
+	XBLTokens,
+	Proxy
 } from '../..';
 
 //#region definitions
@@ -19,6 +21,14 @@ const XBLAdditionalHeaders = {
 	Accept: 'application/json',
 	'X-Xbl-Contract-Version': String(XBLContractVersion)
 };
+
+const getProxyAgent = (proxy?: Proxy) => proxy ? ({
+	httpsAgent: new HttpsProxyAgent({
+        host: proxy.host,
+        port: proxy.port,
+        auth: proxy.username && proxy.password ? `${proxy.username}:${proxy.password}` : undefined,
+    })
+}) : ({});
 
 //#endregion
 //#region public methods
@@ -39,7 +49,8 @@ const XBLAdditionalHeaders = {
 export const exchangeRpsTicketForUserToken = async (
 	rpsTicket: string,
 	preamble: 'd' | 't' = 't',
-	additionalHeaders: Record<string, string> = {}
+	additionalHeaders: Record<string, string> = {},
+	proxy?: Proxy,
 ): Promise<XBLExchangeRpsTicketResponse> => {
 	const match = rpsTicket.match(/^([t|d]=)/g);
 
@@ -62,7 +73,8 @@ export const exchangeRpsTicketForUserToken = async (
 				SiteName: 'user.auth.xboxlive.com',
 				RpsTicket: rpsTicket
 			}
-		}
+		},
+		...getProxyAgent(proxy)
 	})
 		.then(res => res.data)
 		.catch(_ => {
@@ -102,7 +114,8 @@ export const exchangeRpsTicketForUserToken = async (
 export const exchangeTokensForXSTSToken = async (
 	tokens: XBLTokens,
 	options: XBLExchangeTokensOptions = {},
-	additionalHeaders: Record<string, string> = {}
+	additionalHeaders: Record<string, string> = {},
+	proxy?: Proxy,
 ): Promise<XBLExchangeTokensResponse> => {
 	const response = await axios({
 		url: config.urls.XSTSAuthorize,
@@ -121,7 +134,8 @@ export const exchangeTokensForXSTSToken = async (
 				OptionalDisplayClaims: options.optionalDisplayClaims,
 				SandboxId: options.sandboxId || 'RETAIL'
 			}
-		}
+		},
+		...getProxyAgent(proxy)
 	})
 		.then(res => res.data)
 		.catch((err: AxiosError) => {

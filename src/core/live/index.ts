@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { stringify } from 'querystring';
 import { getBaseHeaders } from '../../utils';
 import XRError from '../../classes/XRError';
@@ -9,7 +10,8 @@ import {
 	LiveCredentials,
 	LivePreAuthMatchedParameters,
 	LivePreAuthResponse,
-	LivePreAuthOptions
+	LivePreAuthOptions,
+	Proxy,
 } from '../..';
 
 import config, {
@@ -25,6 +27,14 @@ const getMatchForIndex = (entry: string, regex: RegExp, index: number = 0) => {
 	const match = entry.match(regex);
 	return match?.[index] || void 0;
 };
+
+const getProxyAgent = (proxy?: Proxy) => proxy ? ({
+	httpsAgent: new HttpsProxyAgent({
+        host: proxy.host,
+        port: proxy.port,
+        auth: proxy.username && proxy.password ? `${proxy.username}:${proxy.password}` : undefined,
+    })
+}) : ({});
 
 //#endregion
 //#region public methods
@@ -225,7 +235,8 @@ export const preAuth = async (
  * @returns {Promise<LiveAuthResponse>} Authenticate response
  */
 export const authenticate = async (
-	credentials: LiveCredentials
+	credentials: LiveCredentials,
+	proxy?: Proxy
 ): Promise<LiveAuthResponse> => {
 	const preAuthResponse = await preAuth();
 	const response = await axios({
@@ -242,7 +253,8 @@ export const authenticate = async (
 			PPFT: preAuthResponse.matches.PPFT
 		}),
 		maxRedirects: 0,
-		validateStatus: status => status === 302 || status === 200
+		validateStatus: status => status === 302 || status === 200,
+		...getProxyAgent(proxy)
 	})
 		.then(res => {
 			if (res.status === 200) {

@@ -98,10 +98,18 @@ export type XBLTokens = {
 	titleToken?: string;
 };
 
+export type Proxy = {
+	host: string;
+	port: number;
+	username?: string;
+	password?: string;
+};
+
 export type AuthenticateOptions = XBLExchangeTokensOptions & {
 	deviceToken?: string;
 	titleToken?: string;
 	raw?: boolean;
+	proxy?: Proxy;
 };
 
 export type AuthenticateRefreshOptions = {
@@ -148,7 +156,9 @@ const postLiveAuthenticate = async (
 ): Promise<CredentialsAuthenticateResponse> => {
 	const userTokenResponse = await exchangeRpsTicketForUserToken(
 		liveAuthResponse.access_token,
-		preamble
+		preamble,
+		{},
+		options?.proxy,
 	);
 
 	const XSTSResponse = await exchangeTokensForXSTSToken(
@@ -161,7 +171,9 @@ const postLiveAuthenticate = async (
 			XSTSRelyingParty: options.XSTSRelyingParty,
 			optionalDisplayClaims: options.optionalDisplayClaims,
 			sandboxId: options.sandboxId
-		}
+		},
+		{},
+		options?.proxy
 	);
 
 	if (options.raw !== true) {
@@ -199,7 +211,7 @@ export const authenticateWithUserCredentials = async (
 	options: AuthenticateOptions = {}
 ): Promise<CredentialsAuthenticateResponse> => {
 	const credentials: LiveCredentials = { email, password };
-	const liveAuthResponse = await LiveAuthenticate(credentials);
+	const liveAuthResponse = await LiveAuthenticate(credentials, options?.proxy);
 	return postLiveAuthenticate(liveAuthResponse, 't', options);
 };
 
